@@ -61,6 +61,9 @@ class Analyzer(QWidget):
         self.m_animatedComboBox = self.createAnimationBox()
         self.m_legendComboBox = self.createLegendBox()
         self.m_uploadDataButton = self.createGetDataButton()
+        self.m_messageLabel = self.createLabel(self.m_message)
+        self.m_weibullParamKLabel = self.createLabel(str(self.m_weibullParamK))
+        self.m_weibullParamLambdaLabel = self.createLabel(str(self.m_weibullParamLambda))
 
     def createThemeBox(self) -> QComboBox:
         themeComboBox = QComboBox()
@@ -96,6 +99,9 @@ class Analyzer(QWidget):
     def createButtonName(self, name: str) -> str:
         span = "".join([" " for x in range(20)])
         return span + name + span
+
+    def createLabel(self, name: str) -> QLabel:
+        return QLabel(name)
 
     def connectSignals(self) -> None:
         self.m_themeComboBox.currentIndexChanged.connect(self.updateUI)
@@ -160,6 +166,10 @@ class Analyzer(QWidget):
                 legend.setAlignment(Qt.Alignment(alignment))
                 legend.show()
 
+        self.m_messageLabel.setText(str(self.m_message))
+        self.m_weibullParamKLabel.setText(str(self.m_weibullParamK))
+        self.m_weibullParamLambdaLabel.setText(str(self.m_weibullParamLambda))
+
     def analyzeUploadedFile(self) -> None:
         fileName = self.getFileName()
         chartDataWei, paramK, paramLambda, chartDataKaplan, message = None, None, None, None, None
@@ -170,7 +180,6 @@ class Analyzer(QWidget):
             except NoDataException:
                 message = "Upload file containing at least one row of data to be analyzed"
             except Exception as e:
-                print(e)
                 message = "Upload file containing data in valid format"
         self.setDisplayValues(fileName, message, chartDataWei, paramK, paramLambda, chartDataKaplan)
         self.updateUI()
@@ -187,7 +196,6 @@ class Analyzer(QWidget):
     def analyzeDataInXlsxFormat(self, fileName: str) -> Tuple[list, float, float, list]:
         keys, data = self.getDataFromXlsxFile(fileName)
         serialized_data = self.serializeXlsxData(keys, data)
-        print(serialized_data)
         return self.getWeiBullAndKaplanMeierResults(keys, serialized_data)
 
     def getDataFromXlsxFile(self, fileName: str) -> Tuple[list, list]:
@@ -221,7 +229,6 @@ class Analyzer(QWidget):
             data = list(dict_reader)
         if len(data) < 1:
             raise NoDataException
-        print(data)
         return data[0].keys(), data
 
     def createLayout(self) -> None:
@@ -237,12 +244,26 @@ class Analyzer(QWidget):
         settingsLayout.addStretch()
         baseLayout.addLayout(settingsLayout, 0, 0, 1, 2)
 
+        messageLayout = QHBoxLayout()
+        messageLayout.addWidget(QLabel("INFO: "))
+        messageLayout.addWidget(self.m_messageLabel)
+        messageLayout.addStretch()
+        baseLayout.addLayout(messageLayout, 1, 0, 1, 2)
+
+        weibullParamsLayout = QHBoxLayout()
+        weibullParamsLayout.addWidget(QLabel("Weibull K: "))
+        weibullParamsLayout.addWidget(self.m_weibullParamKLabel)
+        weibullParamsLayout.addWidget(QLabel("Weibull λ: "))
+        weibullParamsLayout.addWidget(self.m_weibullParamLambdaLabel)
+        weibullParamsLayout.addStretch()
+        baseLayout.addLayout(weibullParamsLayout, 2, 0, 1, 2)
+
         chartView = QChartView(self.createWeibullChart())
-        baseLayout.addWidget(chartView, 1, 0)
+        baseLayout.addWidget(chartView, 3, 0)
         self.m_charts.append(chartView)
 
         chartView = QChartView(self.createKaplanMeierChart())
-        baseLayout.addWidget(chartView, 1, 1)
+        baseLayout.addWidget(chartView, 3, 1)
         self.m_charts.append(chartView)
 
         self.setLayout(baseLayout)
