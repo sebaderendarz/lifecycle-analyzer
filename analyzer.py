@@ -210,7 +210,7 @@ class Analyzer(QWidget):
         for record in data:
             serialized_record = {}
             for key, value in zip(keys, record):
-                serialized_record[key] = value
+                serialized_record[key] = int(value) if keys[-1] == key else value
             serialized_data.append(serialized_record)
         return serialized_data
 
@@ -221,7 +221,8 @@ class Analyzer(QWidget):
 
     def analyzeDataInCsvFormat(self, fileName: str) -> None:
         keys, data = self.getDataFromCsvFile(fileName)
-        return self.getWeiBullAndKaplanMeierResults(keys, data)
+        serialized_data = self.serializeCsvData(keys, data)
+        return self.getWeiBullAndKaplanMeierResults(keys, serialized_data)
 
     def getDataFromCsvFile(self, fileName: str) -> Tuple[List, List]:
         with open(fileName) as f:
@@ -229,7 +230,12 @@ class Analyzer(QWidget):
             data = list(dict_reader)
         if len(data) < 1:
             raise NoDataException
-        return data[0].keys(), data
+        return list(data[0].keys()), data
+
+    def serializeCsvData(self, keys: list, data: list) -> list:
+        for record in data:
+            record[keys[-1]] = int(record[keys[-1]])
+        return data
 
     def createLayout(self) -> None:
         baseLayout = QGridLayout()
