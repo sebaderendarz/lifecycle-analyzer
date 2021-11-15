@@ -32,7 +32,7 @@ class WeibullAnalyzer:
         points = []
         prev_value = 1
         for row in data:
-            y = prev_value * row[keys[-1]]/(row[keys[-1]] + 1)
+            y = prev_value * row[keys[-1]] / (row[keys[-1]] + 1)
             prev_value = y
             y = math.log(-math.log(y))
             x = math.log(row[keys[-2]])
@@ -45,11 +45,11 @@ class WeibullAnalyzer:
         for row in data:
             sum_x += row[0]
             sum_y += row[1]
-            sum_x2 += row[0]**2
+            sum_x2 += row[0] ** 2
             sum_xy += row[0] * row[1]
-        a = (N * sum_xy - sum_x * sum_y)/(N * sum_x2 - sum_x**2)
-        b = (sum_y - a * sum_x)/N
-        return a, math.exp((-b)/a)
+        a = (N * sum_xy - sum_x * sum_y) / (N * sum_x2 - sum_x ** 2)
+        b = (sum_y - a * sum_x) / N
+        return a, math.exp((-b) / a)
 
     def _generate_chart_data(self, keys: list, data: list, k: float, lamb: float) -> list:
-        return [QPointF(row[keys[-2]], math.exp(-(row[keys[-2]]/lamb)**k)) for row in data]
+        return [QPointF(row[keys[-2]], math.exp(-((row[keys[-2]] / lamb) ** k))) for row in data]

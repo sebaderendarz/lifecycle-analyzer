@@ -1,20 +1,23 @@
 import csv
 import openpyxl
-import random
 from typing import List, Tuple, Union
 
-from PyQt5.QtCore import pyqtSlot, QPointF, Qt
+from PyQt5.QtCore import pyqtSlot, Qt
 from PyQt5.QtChart import QChart, QChartView, QLineSeries
 from PyQt5.QtGui import QColor, QPainter, QPalette
-from PyQt5.QtWidgets import QComboBox, QGridLayout, QFileDialog, QHBoxLayout, QLabel, QPushButton, QWidget
+from PyQt5.QtWidgets import (
+    QComboBox,
+    QGridLayout,
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QWidget,
+)
 
 from exceptions import NoDataException
 from kaplan_meier import KaplanMeierAnalyzer
 from weibull import WeibullAnalyzer
-
-
-# TODO Remove RandomData generator when Analyzers will be prepared
-# TODO Go through classes. Clean mess, fix bugs, separate some code
 
 
 class Analyzer(QWidget):
@@ -27,16 +30,12 @@ class Analyzer(QWidget):
 
     def __init__(self, parent=None) -> None:
         super(Analyzer, self).__init__(parent)
-
         self.m_charts = []
-        self.m_listCount = 3
-        self.m_valueMax = 10
-        self.m_valueCount = 7
-        self.m_dataTable = self.generateRandomData(self.m_listCount, self.m_valueMax, self.m_valueCount)
-        # delete lines above and...
         self.setDisplayValues()
         self.createInteractiveElements()
         self.connectSignals()
+        self.createWeibullChart()
+        self.createKaplanMeierChart()
         self.createLayout()
         self.updateUI()
 
@@ -45,14 +44,16 @@ class Analyzer(QWidget):
         fileName: Union[str, None] = None,
         message: Union[str, None] = None,
         dataTableWei: Union[list, None] = None,
-        paramK: Union[float, None] = None,
-        paramLambda: Union[float, None] = None,
+        paramK: Union[str, None] = None,
+        paramLambda: Union[str, None] = None,
         dataTableKaplan: Union[list, None] = None,
     ) -> None:
         self.m_dataFileName = fileName if fileName else Analyzer.DEFAULT_DATA_FILENAME
         self.m_message = message if message else Analyzer.DEFAULT_MESSAGE
         self.m_weibullDataTable = dataTableWei if dataTableWei else Analyzer.DEFAULT_CHART_DATA
-        self.m_kaplanMeierDataTable = dataTableKaplan if dataTableKaplan else Analyzer.DEFAULT_CHART_DATA
+        self.m_kaplanMeierDataTable = (
+            dataTableKaplan if dataTableKaplan else Analyzer.DEFAULT_CHART_DATA
+        )
         self.m_weibullParamK = paramK if paramK else Analyzer.DEFAULT_WEIBULL_K
         self.m_weibullParamLambda = paramLambda if paramLambda else Analyzer.DEFAULT_WEIBULL_LAMBDA
 
@@ -111,14 +112,18 @@ class Analyzer(QWidget):
 
     @pyqtSlot()
     def updateUI(self):
-        theme = self.m_themeComboBox.itemData(self.m_themeComboBox.currentIndex())
+        self.updateDisplayTheme()
+        self.updateChartsAnimation()
+        self.updateChartsLegendAlignment()
+        self.updateTextAreas()
+        self.updateCharts()
 
+    def updateDisplayTheme(self) -> None:
+        theme = self.m_themeComboBox.itemData(self.m_themeComboBox.currentIndex())
         if self.m_charts[0].chart().theme() != theme:
             for chartView in self.m_charts:
                 chartView.chart().setTheme(theme)
-
             pal = self.window().palette()
-
             if theme == QChart.ChartThemeLight:
                 pal.setColor(QPalette.Window, QColor(0xF0F0F0))
                 pal.setColor(QPalette.WindowText, QColor(0x404044))
@@ -143,32 +148,54 @@ class Analyzer(QWidget):
             else:
                 pal.setColor(QPalette.Window, QColor(0xF0F0F0))
                 pal.setColor(QPalette.WindowText, QColor(0x404044))
-
             self.window().setPalette(pal)
 
-        for chartView in self.m_charts:
-            chartView.setRenderHint(QPainter.Antialiasing, True)
-
-        options = QChart.AnimationOptions(self.m_animatedComboBox.itemData(self.m_animatedComboBox.currentIndex()))
-
+    def updateChartsAnimation(self) -> None:
+        options = QChart.AnimationOptions(
+            self.m_animatedComboBox.itemData(self.m_animatedComboBox.currentIndex())
+        )
         if self.m_charts[0].chart().animationOptions() != options:
             for chartView in self.m_charts:
                 chartView.chart().setAnimationOptions(options)
 
+    def updateChartsLegendAlignment(self) -> None:
         alignment = self.m_legendComboBox.itemData(self.m_legendComboBox.currentIndex())
-
         for chartView in self.m_charts:
             legend = chartView.chart().legend()
-
             if alignment == 0:
                 legend.hide()
             else:
                 legend.setAlignment(Qt.Alignment(alignment))
                 legend.show()
 
+    def updateTextAreas(self) -> None:
         self.m_messageLabel.setText(str(self.m_message))
         self.m_weibullParamKLabel.setText(str(self.m_weibullParamK))
         self.m_weibullParamLambdaLabel.setText(str(self.m_weibullParamLambda))
+
+    def updateCharts(self) -> None:
+        self.updateWeibullChart()
+        self.updateKaplanMeierChart()
+
+    def updateWeibullChart(self) -> None:
+        self.m_weibullChart.removeAllSeries()
+        series = QLineSeries()
+        for point in self.m_weibullDataTable:
+            series.append(point)
+        series.setName("Probability of Survival")
+        self.m_weibullChart.addSeries(series)
+        # TODO Adjust axes. Default don't show data properly
+        self.m_weibullChart.createDefaultAxes()
+
+    def updateKaplanMeierChart(self) -> None:
+        self.m_kaplanMeierChart.removeAllSeries()
+        series = QLineSeries()
+        for point in self.m_kaplanMeierDataTable:
+            series.append(point)
+        series.setName("Probability of Survival")
+        self.m_kaplanMeierChart.addSeries(series)
+        # TODO Adjust axes. Default don't show axes properly
+        self.m_kaplanMeierChart.createDefaultAxes()
 
     def analyzeUploadedFile(self) -> None:
         fileName = self.getFileName()
@@ -185,15 +212,17 @@ class Analyzer(QWidget):
         self.updateUI()
 
     def getFileName(self) -> Union[str, None]:
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open Data File", filter="Data files (*.csv *.xlsx)")
+        fileName, _ = QFileDialog.getOpenFileName(
+            self, "Open Data File", filter="Data files (*.csv *.xlsx)"
+        )
         return fileName
 
-    def analyzeData(self, fileName: str) -> Tuple[list, float, float, list]:
+    def analyzeData(self, fileName: str) -> Tuple[list, str, str, list]:
         if fileName.endswith(".xlsx"):
             return self.analyzeDataInXlsxFormat(fileName)
         return self.analyzeDataInCsvFormat(fileName)
 
-    def analyzeDataInXlsxFormat(self, fileName: str) -> Tuple[list, float, float, list]:
+    def analyzeDataInXlsxFormat(self, fileName: str) -> Tuple[list, str, str, list]:
         keys, data = self.getDataFromXlsxFile(fileName)
         serialized_data = self.serializeXlsxData(keys, data)
         return self.getWeiBullAndKaplanMeierResults(keys, serialized_data)
@@ -214,12 +243,14 @@ class Analyzer(QWidget):
             serialized_data.append(serialized_record)
         return serialized_data
 
-    def getWeiBullAndKaplanMeierResults(self, keys: list, data: list) -> Tuple[list, float, float, list]:
+    def getWeiBullAndKaplanMeierResults(
+        self, keys: list, data: list
+    ) -> Tuple[list, str, str, list]:
         chartDataWei, paramK, paramLambda = WeibullAnalyzer().analyze(keys, data)
         chartDataKaplan = KaplanMeierAnalyzer().analyze(keys, data)
         return chartDataWei, paramK, paramLambda, chartDataKaplan
 
-    def analyzeDataInCsvFormat(self, fileName: str) -> None:
+    def analyzeDataInCsvFormat(self, fileName: str) -> Tuple[list, str, str, list]:
         keys, data = self.getDataFromCsvFile(fileName)
         serialized_data = self.serializeCsvData(keys, data)
         return self.getWeiBullAndKaplanMeierResults(keys, serialized_data)
@@ -236,6 +267,14 @@ class Analyzer(QWidget):
         for record in data:
             record[keys[-1]] = int(record[keys[-1]])
         return data
+
+    def createWeibullChart(self) -> None:
+        self.m_weibullChart = QChart()
+        self.m_weibullChart.setTitle("Weibull")
+
+    def createKaplanMeierChart(self) -> QChart:
+        self.m_kaplanMeierChart = QChart()
+        self.m_kaplanMeierChart.setTitle("Kaplan-Meier")
 
     def createLayout(self) -> None:
         baseLayout = QGridLayout()
@@ -264,65 +303,16 @@ class Analyzer(QWidget):
         weibullParamsLayout.addStretch()
         baseLayout.addLayout(weibullParamsLayout, 2, 0, 1, 2)
 
-        chartView = QChartView(self.createWeibullChart())
+        chartView = QChartView(self.m_weibullChart)
+        chartView.setRenderHint(QPainter.Antialiasing, True)
         baseLayout.addWidget(chartView, 3, 0)
         self.m_charts.append(chartView)
-
-        chartView = QChartView(self.createKaplanMeierChart())
+        chartView = QChartView(self.m_kaplanMeierChart)
+        chartView.setRenderHint(QPainter.Antialiasing, True)
         baseLayout.addWidget(chartView, 3, 1)
         self.m_charts.append(chartView)
 
         self.setLayout(baseLayout)
-
-    def createWeibullChart(self) -> QChart:
-        chart = QChart()
-        chart.setTitle("Weibull Chart")
-
-        for i, data_list in enumerate(self.m_weibullDataTable):
-            series = QLineSeries(chart)
-            for value, _ in data_list:
-                series.append(value)
-
-            series.setName("Series " + str(i))
-            chart.addSeries(series)
-
-        chart.createDefaultAxes()
-        return chart
-
-    def createKaplanMeierChart(self) -> QChart:
-        chart = QChart()
-        chart.setTitle("Kaplan-Meier Chart")
-
-        for i, data_list in enumerate(self.m_kaplanMeierDataTable):
-            series = QLineSeries(chart)
-            for value, _ in data_list:
-                series.append(value)
-
-            series.setName("Series " + str(i))
-            chart.addSeries(series)
-
-        chart.createDefaultAxes()
-        return chart
-
-    def generateRandomData(self, listCount, valueMax, valueCount):
-        random.seed()
-
-        dataTable = []
-
-        for i in range(listCount):
-            dataList = []
-            yValue = 0.0
-            f_valueCount = float(valueCount)
-
-            for j in range(valueCount):
-                yValue += random.uniform(0, valueMax) / f_valueCount
-                value = QPointF(j + random.random() * self.m_valueMax / f_valueCount, yValue)
-                label = "Slice " + str(i) + ":" + str(j)
-                dataList.append((value, label))
-
-            dataTable.append(dataList)
-
-        return dataTable
 
 
 if __name__ == "__main__":
