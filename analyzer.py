@@ -182,7 +182,7 @@ class Analyzer(QWidget):
         series = QLineSeries()
         for point in self.m_weibullDataTable:
             series.append(point)
-        series.setName("Probability of Survival")
+        series.setName("Probability of Surviving")
         self.m_weibullChart.addSeries(series)
         # TODO Adjust axes. Default don't show data properly
         self.m_weibullChart.createDefaultAxes()
@@ -192,7 +192,7 @@ class Analyzer(QWidget):
         series = QLineSeries()
         for point in self.m_kaplanMeierDataTable:
             series.append(point)
-        series.setName("Probability of Survival")
+        series.setName("Probability of Surviving")
         self.m_kaplanMeierChart.addSeries(series)
         # TODO Adjust axes. Default don't show axes properly
         self.m_kaplanMeierChart.createDefaultAxes()

@@ -10,7 +10,7 @@ class WeibullAnalyzer:
         uncensored_data = self._get_uncensored_data(keys, sorted_and_ranked_data)
         survival_points = self._calculate_estimate_survival_values(keys, uncensored_data)
         k, lamb = self._calculate_weibull_parameters(survival_points)
-        chart_data = self._generate_chart_data(keys, sorted_and_ranked_data, k, lamb)
+        chart_data = self._generate_chart_data(keys, uncensored_data, k, lamb)
         return chart_data, f"{k:.8f}", f"{lamb:.8f}"
 
     def _sort_and_rank_data(self, keys: list, data: list) -> list:
