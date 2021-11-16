@@ -3,7 +3,7 @@ import openpyxl
 from typing import List, Tuple, Union
 
 from PyQt5.QtCore import pyqtSlot, Qt
-from PyQt5.QtChart import QChart, QChartView, QLineSeries
+from PyQt5.QtChart import QChart, QChartView, QLineSeries, QValueAxis
 from PyQt5.QtGui import QColor, QPainter, QPalette
 from PyQt5.QtWidgets import (
     QComboBox,
@@ -178,24 +178,34 @@ class Analyzer(QWidget):
         self.updateKaplanMeierChart()
 
     def updateWeibullChart(self) -> None:
+        self.m_weibullChart.removeAxis(self.m_weibullChartAxes[0])
+        self.m_weibullChart.removeAxis(self.m_weibullChartAxes[1])
         self.m_weibullChart.removeAllSeries()
+        self.m_weibullChartAxes = [self.createAxisX(), self.createAxisY()]
+        self.m_weibullChart.addAxis(self.m_weibullChartAxes[0], Qt.AlignBottom)
+        self.m_weibullChart.addAxis(self.m_weibullChartAxes[1], Qt.AlignLeft)
         series = QLineSeries()
         for point in self.m_weibullDataTable:
             series.append(point)
-        series.setName("Probability of Surviving")
+        series.setName("Uncensored records")
         self.m_weibullChart.addSeries(series)
-        # TODO Adjust axes. Default don't show data properly
-        self.m_weibullChart.createDefaultAxes()
+        series.attachAxis(self.m_weibullChartAxes[0])
+        series.attachAxis(self.m_weibullChartAxes[1])
 
     def updateKaplanMeierChart(self) -> None:
+        self.m_kaplanMeierChart.removeAxis(self.m_kaplanMeierChartAxes[0])
+        self.m_kaplanMeierChart.removeAxis(self.m_kaplanMeierChartAxes[1])
         self.m_kaplanMeierChart.removeAllSeries()
+        self.m_kaplanMeierChartAxes = [self.createAxisX(), self.createAxisY()]
+        self.m_kaplanMeierChart.addAxis(self.m_kaplanMeierChartAxes[0], Qt.AlignBottom)
+        self.m_kaplanMeierChart.addAxis(self.m_kaplanMeierChartAxes[1], Qt.AlignLeft)
         series = QLineSeries()
         for point in self.m_kaplanMeierDataTable:
             series.append(point)
-        series.setName("Probability of Surviving")
+        series.setName("Uncensored records")
         self.m_kaplanMeierChart.addSeries(series)
-        # TODO Adjust axes. Default don't show axes properly
-        self.m_kaplanMeierChart.createDefaultAxes()
+        series.attachAxis(self.m_kaplanMeierChartAxes[0])
+        series.attachAxis(self.m_kaplanMeierChartAxes[1])
 
     def analyzeUploadedFile(self) -> None:
         fileName = self.getFileName()
@@ -271,10 +281,31 @@ class Analyzer(QWidget):
     def createWeibullChart(self) -> None:
         self.m_weibullChart = QChart()
         self.m_weibullChart.setTitle("Weibull")
+        axis_x = self.createAxisX()
+        self.m_weibullChart.addAxis(axis_x, Qt.AlignBottom)
+        axis_y = self.createAxisY()
+        self.m_weibullChart.addAxis(axis_y, Qt.AlignLeft)
+        self.m_weibullChartAxes = [axis_x, axis_y]
+
+    def createAxisX(self) -> QValueAxis:
+        axis_x = QValueAxis()
+        axis_x.setTitleText("Time Elapsed (days)")
+        axis_x.setLabelFormat("%.0f")
+        return axis_x
+
+    def createAxisY(self) -> QValueAxis:
+        axis_y = QValueAxis()
+        axis_y.setTitleText("Probability of Surviving")
+        return axis_y
 
     def createKaplanMeierChart(self) -> QChart:
         self.m_kaplanMeierChart = QChart()
         self.m_kaplanMeierChart.setTitle("Kaplan-Meier")
+        axis_x = self.createAxisX()
+        self.m_kaplanMeierChart.addAxis(axis_x, Qt.AlignBottom)
+        axis_y = self.createAxisY()
+        self.m_kaplanMeierChart.addAxis(axis_y, Qt.AlignLeft)
+        self.m_kaplanMeierChartAxes = [axis_x, axis_y]
 
     def createLayout(self) -> None:
         baseLayout = QGridLayout()
